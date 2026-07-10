@@ -149,28 +149,10 @@
     </div>
 
     <script>
-        // --- WAIT FOR SUPABASE LIBRARY TO LOAD ---
-        function waitForSupabase(callback) {
-            if (window.supabase) {
-                callback();
-            } else {
-                setTimeout(() => waitForSupabase(callback), 100);
-            }
-        }
-
+        // --- DECLARE ALL VARIABLES AT TOP ---
         let supabase = null;
-
-        // Initialize Supabase only after the library is available
-        waitForSupabase(() => {
-            const SUPABASE_URL = "https://yitrbyifexlqwtlypjja.supabase.co"; 
-            const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpdHJieWlmZXhscXd0bHlwamphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjY0MDQsImV4cCI6MjA5OTIwMjQwNH0.c_8ctd-2FQQWur_4e32b-uvEmUSB2hgKW_OJ-1dMtLQ";
-            
-            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                console.log("✅ Supabase initialized successfully");
-                initializeApp();
-            }
-        });
+        const SUPABASE_URL = "https://yitrbyifexlqwtlypjja.supabase.co"; 
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpdHJieWlmZXhscXd0bHlwamphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjY0MDQsImV4cCI6MjA5OTIwMjQwNH0.c_8ctd-2FQQWur_4e32b-uvEmUSB2hgKW_OJ-1dMtLQ";
 
         // --- 2. MASTER INDIAN HOUSEHOLD CATEGORIES ---
         const INDIAN_CATEGORIES = [
@@ -225,24 +207,33 @@
             }
         }
 
-        // Initialize app after Supabase is ready
-        function initializeApp() {
-            if (supabase) {
-                // Bind Authentication state listeners
-                supabase.auth.onAuthStateChange((event, session) => {
-                    if (session && session.user) {
-                        currentUserId = session.user.id;
-                        authPage.classList.add('hidden');
-                        appPage.classList.remove('hidden');
-                        initDashboardData();
-                    } else {
-                        currentUserId = null;
-                        appPage.classList.add('hidden');
-                        authPage.classList.remove('hidden');
-                    }
-                });
+        // --- WAIT FOR SUPABASE LIBRARY TO LOAD ---
+        function waitForSupabase(callback) {
+            if (window.supabase) {
+                callback();
+            } else {
+                setTimeout(() => waitForSupabase(callback), 100);
             }
         }
+
+        waitForSupabase(() => {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log("✅ Supabase initialized successfully");
+            
+            // Now setup auth listeners
+            supabase.auth.onAuthStateChange((event, session) => {
+                if (session && session.user) {
+                    currentUserId = session.user.id;
+                    authPage.classList.add('hidden');
+                    appPage.classList.remove('hidden');
+                    initDashboardData();
+                } else {
+                    currentUserId = null;
+                    appPage.classList.add('hidden');
+                    authPage.classList.remove('hidden');
+                }
+            });
+        });
 
         // Toggle Auth View (Login vs Registration)
         authSwitchBtn.addEventListener('click', (e) => {
