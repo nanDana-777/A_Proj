@@ -149,6 +149,10 @@
     </div>
 
     <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+    alert("Error caught: " + message + " at line " + lineno);
+    return true; // This prevents the hard page refresh so we can see it!
+};
         // --- 1. CONFIGURATION ---
         // Hardcoded Keys completely isolate deployment from routing errors
         const SUPABASE_URL = "https://yitrbyifexlqwtlypjja.supabase.co"; 
