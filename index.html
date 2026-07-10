@@ -96,6 +96,7 @@
     <script>
         const CATS = ["Food & Beverages", "Electricity Bills", "Water Bills", "Gas Cylinder/Piped", "Insurance Premia", "Internet & Phone Bills", "House Rent", "Property/Home Loan EMI", "Travel & Petrol", "Maid & Cook Salaries", "School Fees", "Medical & Pharmacy", "Other Expenses"];
         let userID = null, budget = null, expenses = [], isLogin = true;
+        let budgetChart = null;
         
         setTimeout(() => {
             if (!window.supabase) return;
@@ -212,7 +213,45 @@
 
                 const dd = document.getElementById('expense-category');
                 dd.innerHTML = budget?.selected_categories?.length ? budget.selected_categories.map(c => `<option value="${c}">${c}</option>`).join('') : '<option>-- Setup Budget First --</option>';
+                // 1. Check if we have budget allocations to show
+                if (budget && budget.category_allocations) {
+                    const ctx = document.getElementById('budgetPieChart');
+                    
+                    // Extract labels (categories) and data (amounts) from your Supabase object
+                    const labels = Object.keys(budget.category_allocations);
+                    const dataValues = Object.values(budget.category_allocations);
+
+                    // Destroy the old chart if it exists so we don't draw on top of it
+                    if (budgetChart) {
+                        budgetChart.destroy();
+                    }
+
+                    // Create the new Chart
+                    budgetChart = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: dataValues,
+                                backgroundColor: [
+                                    '#047857', '#10b981', '#34d399', '#6ee7b7', // Emerald shades
+                                    '#0284c7', '#38bdf8', '#fbbf24', '#f87171'  // Extra colors for variety
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                }
+                            }
+                        }
+                    });
+                }
             }
+        }
         }, 500);
     </script>
 </body>
