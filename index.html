@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rupee Expense Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen text-gray-800">
+
+    <div id="auth-page" class="flex items-center justify-center min-h-screen px-4">
+        <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md border border-gray-100">
+            <h2 id="auth-title" class="text-2xl font-bold text-center mb-6 text-emerald-700">Login to RupeeTracker</h2>
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Email Address</label>
+                    <input type="email" id="auth-email" required class="w-full px-4 py-2 border rounded-lg focus:outline-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Password</label>
+                    <input type="password" id="auth-password" required class="w-full px-4 py-2 border rounded-lg focus:outline-emerald-500">
+                </div>
+                <button type="submit" id="auth-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg transition">Login</button>
+            </form>
+            <p class="text-center text-sm mt-4 text-gray-600">
+                <span id="auth-switch-text">Don't have an account?</span>
+                <button id="auth-switch-btn" class="text-emerald-600 font-bold underline ml-1">Register</button>
+            </p>
+        </div>
+    </div>
+
+    <div id="app-page" class="hidden">
+        <nav class="bg-emerald-700 text-white py-4 px-6 flex justify-between items-center shadow-md">
+            <h1 class="text-xl font-bold">₹ RupeeTracker</h1>
+            <div class="space-x-2">
+                <button onclick="showSection('home')" class="px-3 py-1.5 rounded hover:bg-emerald-800 font-medium">Dashboard</button>
+                <button onclick="showSection('expenses')" class="px-3 py-1.5 rounded hover:bg-emerald-800 font-medium">View Expenses</button>
+                <button id="logout-btn" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded font-medium transition">Logout</button>
+            </div>
+        </nav>
+
+        <div class="max-w-6xl mx-auto p-4 md:p-6">
+            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <p class="text-sm text-gray-500 uppercase tracking-wider font-bold">Total Monthly Budget</p>
+                    <h2 id="display-total-budget" class="text-3xl md:text-4xl font-extrabold text-gray-900">₹0.00</h2>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openBudgetForm()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-4 py-2 rounded-lg transition">✏️ Setup / Edit Budget</button>
+                    <button onclick="openExpenseForm()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg transition">➕ Add Expense</button>
+                </div>
+            </div>
+
+            <div id="section-home" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
+                        <h3 class="text-md font-bold mb-4 text-gray-700">Budgeted Category Allocations (Expected)</h3>
+                        <div class="w-full max-w-[320px]"><canvas id="budgetPieChart"></canvas></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center">
+                        <h3 class="text-md font-bold mb-4 text-gray-700">Actual Spending Category Breakdown</h3>
+                        <div class="w-full max-w-[320px]"><canvas id="expensePieChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-md font-bold mb-4 text-gray-700">Expected Budget vs. Actual Cumulative Spending</h3>
+                    <div class="w-full max-h-[300px]"><canvas id="trendLineChart"></canvas></div>
+                </div>
+            </div>
+
+            <div id="section-expenses" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">All Logged Expenses</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-700 uppercase text-xs font-bold">
+                                <th class="p-3 border-b">Date</th>
+                                <th class="p-3 border-b">Expense Item</th>
+                                <th class="p-3 border-b">Category</th>
+                                <th class="p-3 border-b">Description</th>
+                                <th class="p-3 border-b text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expense-table-body" class="text-sm divide-y">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="budget-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 animate-in fade-in zoom-in-95 duration-150">
+            <h3 class="text-xl font-bold mb-4 text-emerald-800">Set Monthly Budget & Categories</h3>
+            <form id="budget-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-1">Total Monthly Budget (₹)</label>
+                    <input type="number" id="input-total-budget" required min="0" class="w-full px-4 py-2 border rounded-lg focus:outline-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-2">Select Active Indian Household Categories & Allocations (₹)</label>
+                    <div id="category-checkboxes-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto p-2 border bg-gray-50 rounded-lg">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2 border-t">
+                    <button type="button" onclick="closeBudgetModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="expense-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h3 class="text-xl font-bold mb-4 text-emerald-800">Log New Expense</h3>
+            <form id="expense-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-1">Expense Name</label>
+                    <input type="text" id="expense-name" required placeholder="e.g., Weekly Vegetables" class="w-full px-4 py-2 border rounded-lg focus:outline-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Category</label>
+                    <select id="expense-category" required class="w-full px-4 py-2 border rounded-lg focus:outline-emerald-500">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Expense Amount (₹)</label>
+                    <input type="number" id="expense-amount" required min="1" class="w-full px-4 py-2 border rounded-lg focus:outline-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Date of Expense</label>
+                    <input type="date" id="expense-date" required class="w-full px-4 py-2 border rounded-lg focus:outline-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Description (Optional)</label>
+                    <textarea id="expense-desc" rows="2" class="w-full px-4 py-2 border rounded-lg focus:outline-emerald-500"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2 border-t">
+                    <button type="button" onclick="closeExpenseModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg">Record Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Securely inject Vercel System variables dynamically inside the browser window context -->
+    <script src="/api/env-config" defer></script>
+
+    <script>
+        // --- 1. CONFIGURATION ---
+        // Fallback options reading securely from the dynamic path or custom runtime windows injection hooks
+        const SUPABASE_URL = window.__ENV__?.SUPABASE_URL || ""; 
+        const SUPABASE_ANON_KEY = window.__ENV__?.SUPABASE_ANON_KEY || ""; 
+        
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch(e) {
+            console.warn("Supabase initial hook pending credentials mapping via system settings config context.");
+        }
+
+        // --- 2. MASTER INDIAN HOUSEHOLD CATEGORIES ---
+        const INDIAN_CATEGORIES = [
+            "Food & Beverages", "Electricity Bills", "Water Bills", "Gas Cylinder/Piped",
+            "Insurance Premia", "Internet & Phone Bills", "House Rent", "Property/Home Loan EMI",
+            "Travel & Petrol", "Maid & Cook Salaries", "School Fees", "Medical & Pharmacy", "Other Expenses"
+        ];
+
+        // --- 3. STATE VARIABLES ---
+        let currentUserId = null;
+        let currentBudget = null;
+        let currentExpenses = [];
+        let budgetPieChart, expensePieChart, trendLineChart;
+
+        // --- 4. DOM SELECTION ---
+        const authPage = document.getElementById('auth-page');
+        const appPage = document.getElementById('app-page');
+        const authForm = document.getElementById('auth-form');
+        const authTitle = document.getElementById('auth-title');
+        const authBtn = document.getElementById('auth-btn');
+        const authSwitchBtn = document.getElementById('auth-switch-btn');
+        const authSwitchText = document.getElementById('auth-switch-text');
+        let isLoginMode = true;
+
+        // Initialize Categories UI for Budget form dynamically
+        const checkContainer = document.getElementById('category-checkboxes-container');
+        INDIAN_CATEGORIES.forEach((cat, index) => {
+            const div = document.createElement('div');
+            div.className = "p-2 bg-white rounded border flex flex-col space-y-1";
+            div.innerHTML = `
+                <label class="flex items-center space-x-2 text-sm font-medium cursor-pointer">
+                    <input type="checkbox" value="${cat}" id="chk-${index}" onchange="toggleCategoryInput(${index})" class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                    <span>${cat}</span>
+                </label>
+                <input type="number" placeholder="Expected ₹" id="amt-${index}" disabled min="0" class="hidden w-full text-xs px-2 py-1 border rounded focus:outline-emerald-500">
+            `;
+            checkContainer.appendChild(div);
+        });
+
+        function toggleCategoryInput(index) {
+            const chk = document.getElementById(`chk-${index}`);
+            const amt = document.getElementById(`amt-${index}`);
+            if (chk.checked) {
+                amt.classList.remove('hidden');
+                amt.disabled = false;
+                amt.required = true;
+            } else {
+                amt.classList.add('hidden');
+                amt.disabled = true;
+                amt.required = false;
+                amt.value = '';
+            }
+        }
+
+        // Wait completely until Environment Script loads into runtime windows thread
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const liveUrl = window.__ENV__?.SUPABASE_URL || SUPABASE_URL;
+                const liveKey = window.__ENV__?.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+                if(liveUrl && liveKey) {
+                    supabase = window.supabase.createClient(liveUrl, liveKey);
+                    
+                    // Bind Authentication state listeners dynamically
+                    supabase.auth.onAuthStateChange((event, session) => {
+                        if (session && session.user) {
+                            currentUserId = session.user.id;
+                            authPage.classList.add('hidden');
+                            appPage.classList.remove('hidden');
+                            initDashboardData();
+                        } else {
+                            currentUserId = null;
+                            appPage.classList.add('hidden');
+                            authPage.classList.remove('hidden');
+                        }
+                    });
+                } else {
+                    alert("Configuration Missing! Please update the Vercel Dashboard Environment settings with SUPABASE_URL & SUPABASE_ANON_KEY parameters.");
+                }
+            }, 800);
+        });
+
+        // Toggle Auth View (Login vs Registration)
+        authSwitchBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isLoginMode = !isLoginMode;
+            authTitle.innerText = isLoginMode ? "Login to RupeeTracker" : "Register on RupeeTracker";
+            authBtn.innerText = isLoginMode ? "Login" : "Register";
+            authSwitchText.innerText = isLoginMode ? "Don't have an account?" : "Already registered?";
+            authSwitchBtn.innerText = isLoginMode ? "Register" : "Login";
+        });
+
+        // Handle Authentication submission
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+
+            if (isLoginMode) {
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) alert("Login Failed: " + error.message);
+            } else {
+                const { error } = await supabase.auth.signUp({ email, password });
+                if (error) alert("Registration Failed: " + error.message);
+                else alert("Registration successful! Proceed to log in.");
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => supabase.auth.signOut());
+
+        // --- 6. NAVIGATION PANEL CONTROL ---
+        function showSection(section) {
+            document.getElementById('section-home').classList.toggle('hidden', section !== 'home');
+            document.getElementById('section-expenses').classList.toggle('hidden', section !== 'expenses');
+        }
+
+        // --- 7. CORE REFRESH & FETCH LOGIC ---
+        async function initDashboardData() {
+            let { data: bData } = await supabase.from('budgets').select('*').eq('user_id', currentUserId).maybeSingle();
+            currentBudget = bData;
+            document.getElementById('display-total-budget').innerText = `\u20B9${Number(currentBudget?.total_budget || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+            let { data: eData } = await supabase.from('expenses').select('*').eq('user_id', currentUserId).order('expense_date', { ascending: true });
+            currentExpenses = eData || [];
+
+            populateExpenseTable();
+            populateExpenseDropdown();
+            renderAllCharts();
+        }
+
+        function populateExpenseTable() {
+            const body = document.getElementById('expense-table-body');
+            body.innerHTML = '';
+            if(currentExpenses.length === 0) {
+                body.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400 italic">No transactions mapped this month yet.</td></tr>`;
+                return;
+            }
+            currentExpenses.forEach(exp => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50";
+                tr.innerHTML = `
+                    <td class="p-3 border-b text-gray-600">${new Date(exp.expense_date).toLocaleDateString('en-IN')}</td>
+                    <td class="p-3 border-b font-semibold text-gray-900">${exp.name}</td>
+                    <td class="p-3 border-b"><span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold">${exp.category}</span></td>
+                    <td class="p-3 border-b text-gray-500">${exp.description || '-'}</td>
+                    <td class="p-3 border-b text-right font-bold text-gray-900">₹${Number(exp.amount).toLocaleString('en-IN')}</td>
+                `;
+                body.insertBefore(tr, body.firstChild);
+            });
+        }
+
+        function populateExpenseDropdown() {
+            const dropdown = document.getElementById('expense-category');
+            dropdown.innerHTML = '';
+            if (currentBudget && currentBudget.selected_categories.length > 0) {
+                currentBudget.selected_categories.forEach(cat => {
+                    dropdown.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            } else {
+                dropdown.innerHTML = `<option value="">-- Setup Budget Form First --</option>`;
+            }
+        }
+
+        // --- 8. GRAPHICAL RE-RENDERING (CHART.JS INTERFACING) ---
+        function renderAllCharts() {
+            if(budgetPieChart) budgetPieChart.destroy();
+            if(expensePieChart) expensePieChart.destroy();
+            if(trendLineChart) trendLineChart.destroy();
+
+            const allocs = currentBudget?.category_allocations || {};
+            const budgetLabels = Object.keys(allocs);
+            const budgetValues = Object.values(allocs);
+
+            const actualMap = {};
+            INDIAN_CATEGORIES.forEach(c => actualMap[c] = 0);
+            currentExpenses.forEach(e => { if(actualMap[e.category] !== undefined) actualMap[e.category] += Number(e.amount); });
+            
+            const expenseLabels = Object.keys(actualMap).filter(k => actualMap[k] > 0);
+            const expenseValues = expenseLabels.map(k => actualMap[k]);
+
+            const colorPalette = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#a855f7', '#06b6d4', '#eab308', '#6b7280'];
+
+            budgetPieChart = new Chart(document.getElementById('budgetPieChart'), {
+                type: 'pie',
+                data: {
+                    labels: budgetLabels.length ? budgetLabels : ['No Budget Configured'],
+                    datasets: [{ data: budgetValues.length ? budgetValues : [1], backgroundColor: colorPalette }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
+            });
+
+            expensePieChart = new Chart(document.getElementById('expensePieChart'), {
+                type: 'pie',
+                data: {
+                    labels: expenseLabels.length ? expenseLabels : ['No Real Expense Tracked'],
+                    datasets: [{ data: expenseValues.length ? expenseValues : [1], backgroundColor: colorPalette.slice().reverse() }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } }
+            });
+
+            const totalBudgetAmt = Number(currentBudget?.total_budget || 0);
+            const dayLabels = [];
+            const expectedLine = [];
+            const actualLine = [];
+            
+            let rollingSum = 0;
+            const daysInMonth = 30;
+            const expectedDailyIncrement = totalBudgetAmt / daysInMonth;
+
+            const cashSpentOnDay = Array(daysInMonth + 1).fill(0);
+            currentExpenses.forEach(exp => {
+                const dayIdx = Math.min(daysInMonth, new Date(exp.expense_date).getDate() || 1);
+                cashSpentOnDay[dayIdx] += Number(exp.amount);
+            });
+
+            for(let d=1; d<=daysInMonth; d++) {
+                dayLabels.push(`Day ${d}`);
+                expectedLine.push((expectedDailyIncrement * d).toFixed(0));
+                rollingSum += cashSpentOnDay[d];
+                actualLine.push(rollingSum);
+            }
+
+            trendLineChart = new Chart(document.getElementById('trendLineChart'), {
+                type: 'line',
+                data: {
+                    labels: dayLabels,
+                    datasets: [
+                        { label: 'Expected Linear Spending (₹)', data: expectedLine, borderColor: '#9ca3af', borderDash: [5, 5], fill: false, tension: 0.1 },
+                        { label: 'Actual Accumulation (₹)', data: actualLine, borderColor: '#047857', backgroundColor: 'rgba(4, 120, 87, 0.1)', fill: true, tension: 0.1 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        // --- 9. WINDOW INTERACTIVE CONTROLS ---
+        function openBudgetForm() {
+            document.getElementById('budget-modal').classList.remove('hidden');
+            if(currentBudget) {
+                document.getElementById('input-total-budget').value = currentBudget.total_budget;
+                INDIAN_CATEGORIES.forEach((cat, idx) => {
+                    const check = document.getElementById(`chk-${idx}`);
+                    const valField = document.getElementById(`amt-${idx}`);
+                    if(currentBudget.selected_categories.includes(cat)) {
+                        check.checked = true;
+                        valField.classList.remove('hidden');
+                        valField.disabled = false;
+                        valField.required = true;
+                        valField.value = currentBudget.category_allocations[cat] || '';
+                    } else {
+                        check.checked = false;
+                        valField.classList.add('hidden');
+                        valField.disabled = true;
+                        valField.value = '';
+                    }
+                });
+            }
+        }
+
+        function closeBudgetModal() { document.getElementById('budget-modal').classList.add('hidden'); }
+        function openExpenseForm() { 
+            document.getElementById('expense-modal').classList.remove('hidden'); 
+            document.getElementById('expense-date').value = new Date().toISOString().split('T')[0];
+        }
+        function closeExpenseModal() { document.getElementById('expense-modal').classList.add('hidden'); }
+
+        // --- 10. CRUD WRITE OPERATIONS ON FORMS ---
+        document.getElementById('budget-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const total = parseFloat(document.getElementById('input-total-budget').value);
+            const selected_categories = [];
+            const category_allocations = {};
+
+            INDIAN_CATEGORIES.forEach((cat, idx) => {
+                if (document.getElementById(`chk-${idx}`).checked) {
+                    const expectedVal = parseFloat(document.getElementById(`amt-${idx}`).value) || 0;
+                    selected_categories.push(cat);
+                    category_allocations[cat] = expectedVal;
+                }
+            });
+
+            const payload = { user_id: currentUserId, total_budget: total, selected_categories, category_allocations };
+
+            let err;
+            if (currentBudget) {
+                const { error } = await supabase.from('budgets').update(payload).eq('id', currentBudget.id);
+                err = error;
+            } else {
+                const { error } = await supabase.from('budgets').insert([payload]);
+                err = error;
+            }
+
+            if (err) alert("Database write failed: " + err.message);
+            else {
+                closeBudgetModal();
+                initDashboardData();
+            }
+        });
+
+        document.getElementById('expense-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('expense-name').value;
+            const category = document.getElementById('expense-category').value;
+            const amount = parseFloat(document.getElementById('expense-amount').value);
+            const expense_date = document.getElementById('expense-date').value;
+            const description = document.getElementById('expense-desc').value;
+
+            if(!category) {
+                alert("Please configure dynamic budget categories first before recording transactions.");
+                return;
+            }
+
+            const { error } = await supabase.from('expenses').insert([{
+                user_id: currentUserId, name, category, amount, expense_date, description
+            }]);
+
+            if (error) alert("Error creating transaction item: " + error.message);
+            else {
+                document.getElementById('expense-form').reset();
+                closeExpenseModal();
+                initDashboardData();
+            }
+        });
+    </script>
+</body>
+</html>
