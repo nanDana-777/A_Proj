@@ -1,8 +1,5 @@
 {
-  "routes": [
-    {
-      "src": "/api/env-config",
-      "dest": "/api/env-config.js"
-    }
+  "rewrites": [
+    { "source": "/api/env-config", "destination": "/api/env-config.js" }
   ]
 }
