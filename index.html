@@ -148,23 +148,17 @@
         </div>
     </div>
 
-    <!-- Securely inject Vercel System variables dynamically inside the browser window context -->
-    <script src="/api/env-config" defer></script>
-
     <script>
         // --- 1. CONFIGURATION ---
-        // Fallback options reading securely from the dynamic path or custom runtime windows injection hooks
-        // const SUPABASE_URL = window.__ENV__?.SUPABASE_URL || ""; 
-        // const SUPABASE_ANON_KEY = window.__ENV__?.SUPABASE_ANON_KEY || ""; 
-        // --- 1. CONFIGURATION ---
+        // Hardcoded Keys completely isolate deployment from routing errors
         const SUPABASE_URL = "https://yitrbyifexlqwtlypjja.supabase.co"; 
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpdHJieWlmZXhscXd0bHlwamphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjY0MDQsImV4cCI6MjA5OTIwMjQwNH0.c_8ctd-2FQQWur_4e32b-uvEmUSB2hgKW_OJ-1dMtLQ";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpdHJieWlmZXhscXd0bHlwamphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjY0MDQsImV4cCI6MjA5OTIwMjQwNH0.c_8ctd-2FQQWur_4e32b-uvEmUSB2hgKW_OJ-1dMtLQ"; 
         
         let supabase;
-        try {
+        if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL.indexOf("your-actual") === -1) {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch(e) {
-            console.warn("Supabase initial hook pending credentials mapping via system settings config context.");
+        } else {
+            console.error("Supabase client initialized with missing credentials.");
         }
 
         // --- 2. MASTER INDIAN HOUSEHOLD CATEGORIES ---
@@ -220,31 +214,25 @@
             }
         }
 
-        // Wait completely until Environment Script loads into runtime windows thread
+        // Wait completely until Environment Script loads safely
         window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const liveUrl = window.__ENV__?.SUPABASE_URL || SUPABASE_URL;
-                const liveKey = window.__ENV__?.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
-                if(liveUrl && liveKey) {
-                    supabase = window.supabase.createClient(liveUrl, liveKey);
-                    
-                    // Bind Authentication state listeners dynamically
-                    supabase.auth.onAuthStateChange((event, session) => {
-                        if (session && session.user) {
-                            currentUserId = session.user.id;
-                            authPage.classList.add('hidden');
-                            appPage.classList.remove('hidden');
-                            initDashboardData();
-                        } else {
-                            currentUserId = null;
-                            appPage.classList.add('hidden');
-                            authPage.classList.remove('hidden');
-                        }
-                    });
-                } else {
-                    alert("Configuration Missing! Please update the Vercel Dashboard Environment settings with SUPABASE_URL & SUPABASE_ANON_KEY parameters.");
-                }
-            }, 800);
+            if(supabase) {
+                // Bind Authentication state listeners dynamically
+                supabase.auth.onAuthStateChange((event, session) => {
+                    if (session && session.user) {
+                        currentUserId = session.user.id;
+                        authPage.classList.add('hidden');
+                        appPage.classList.remove('hidden');
+                        initDashboardData();
+                    } else {
+                        currentUserId = null;
+                        appPage.classList.add('hidden');
+                        authPage.classList.remove('hidden');
+                    }
+                });
+            } else {
+                alert("Configuration Error: Please update the index.html variables with your true Supabase details.");
+            }
         });
 
         // Toggle Auth View (Login vs Registration)
@@ -260,6 +248,11 @@
         // Handle Authentication submission
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (!supabase) {
+                alert("Supabase client is not connected.");
+                return;
+            }
+            
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
 
