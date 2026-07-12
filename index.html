@@ -67,7 +67,9 @@
             </div>
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <h3 class="text-lg font-bold mb-4 text-gray-800">Spending Trend</h3>
-                <canvas id="trendChart"></canvas>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="trendChart"></canvas>
+                </div>
             </div>
         </div>
 
@@ -412,21 +414,33 @@ function renderTrendChart() {
     if (trendChartInstance) trendChartInstance.destroy();
 
     const days = 30;
-    const dayLabels = [];
-    const expectedData = [];
-    const actualData = [];
-    const totalBudget = budget?.total_budget || 0;
-    const dailyExpected = totalBudget / days;
     const spentByDay = [];
-
     for (let i = 0; i <= days; i++) spentByDay[i] = 0;
+    
     for (let i = 0; i < expenses.length; i++) {
         const dayIdx = Math.min(days, new Date(expenses[i].expense_date).getDate() || 1);
         spentByDay[dayIdx] += Number(expenses[i].amount);
     }
 
+    const totalBudget = budget?.total_budget || 0;
+    const dailyExpected = totalBudget / days;
+    
+    const dayLabels = [];
+    const expectedData = [];
+    const actualData = [];
+    
     let cumulative = 0;
+    let maxDay = 1;
+    
     for (let d = 1; d <= days; d++) {
+        if (spentByDay[d] > 0 || d <= new Date().getDate()) {
+            maxDay = d;
+        }
+    }
+    
+    maxDay = Math.max(maxDay, 7);
+    
+    for (let d = 1; d <= maxDay; d++) {
         dayLabels.push('Day ' + d);
         expectedData.push((dailyExpected * d).toFixed(0));
         cumulative += spentByDay[d];
@@ -438,11 +452,29 @@ function renderTrendChart() {
         data: {
             labels: dayLabels,
             datasets: [
-                {label: 'Expected (₹)', data: expectedData, borderColor: '#9ca3af', borderDash: [5, 5], fill: false, tension: 0.1},
-                {label: 'Actual (₹)', data: actualData, borderColor: '#047857', backgroundColor: 'rgba(4, 120, 87, 0.1)', fill: true, tension: 0.1}
+                {label: 'Expected (₹)', data: expectedData, borderColor: '#9ca3af', borderDash: [5, 5], fill: false, tension: 0.1, borderWidth: 2},
+                {label: 'Actual (₹)', data: actualData, borderColor: '#047857', backgroundColor: 'rgba(4, 120, 87, 0.1)', fill: true, tension: 0.1, borderWidth: 2}
             ]
         },
-        options: {responsive: true, maintainAspectRatio: false, scales: {y: {beginAtZero: true}}}
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹' + value;
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            }
+        }
     });
 }
 
