@@ -33,68 +33,72 @@
 </div>
 
 <div id="app-page" class="hidden">
-    <nav class="bg-emerald-700 text-white py-4 px-6 flex justify-between items-center">
-        <h1 class="text-xl font-bold">₹ RupeeTracker</h1>
-        <div class="space-x-2">
-            <button onclick="showHome()" class="px-3 py-1.5 rounded hover:bg-emerald-800 font-medium">Dashboard</button>
-            <button onclick="showExpenses()" class="px-3 py-1.5 rounded hover:bg-emerald-800 font-medium">Expenses</button>
-            <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded font-medium">Logout</button>
+    <nav class="bg-emerald-700 text-white py-3 px-3 sm:px-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h1 class="text-lg sm:text-xl font-bold">₹ RupeeTracker</h1>
+        <div class="flex flex-wrap gap-1 sm:space-x-2 w-full sm:w-auto">
+            <button onclick="showHome()" class="px-2 py-1 text-sm sm:px-3 sm:py-1.5 rounded hover:bg-emerald-800 font-medium">Dashboard</button>
+            <button onclick="showExpenses()" class="px-2 py-1 text-sm sm:px-3 sm:py-1.5 rounded hover:bg-emerald-800 font-medium">Expenses</button>
+            <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-2 py-1 text-sm sm:px-3 sm:py-1.5 rounded font-medium">Logout</button>
         </div>
     </nav>
 
-    <div class="max-w-6xl mx-auto p-4 md:p-6">
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-                <p class="text-sm text-gray-500 uppercase tracking-wider font-bold">Total Monthly Budget</p>
-                <h2 id="display-budget" class="text-3xl md:text-4xl font-extrabold text-gray-900">₹0.00</h2>
+    <div class="max-w-6xl mx-auto p-2 sm:p-4 md:p-6">
+        <div class="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-100 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div class="w-full sm:w-auto">
+                <p class="text-xs sm:text-sm text-gray-500 uppercase tracking-wider font-bold">Total Monthly Budget</p>
+                <h2 id="display-budget" class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">₹0.00</h2>
             </div>
-            <div class="flex gap-2">
-                <button onclick="openBudgetModal()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-4 py-2 rounded-lg">✏️ Setup Budget</button>
-                <button onclick="openExpenseModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg">➕ Add Expense</button>
+            <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <button onclick="openBudgetModal()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-3 py-2 text-sm rounded-lg">✏️ Budget</button>
+                <button onclick="openExpenseModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 text-sm rounded-lg">➕ Expense</button>
             </div>
         </div>
 
         <div id="home-page">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-lg font-bold mb-4 text-gray-800">Budget Allocations</h3>
-                    <canvas id="budgetChart"></canvas>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <h3 class="text-base font-bold mb-3 text-gray-800">Budget Allocations</h3>
+                    <div style="height: 250px; position: relative;">
+                        <canvas id="budgetChart"></canvas>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-lg font-bold mb-4 text-gray-800">Actual Spending</h3>
-                    <canvas id="expenseChart"></canvas>
+                <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                    <h3 class="text-base font-bold mb-3 text-gray-800">Actual Spending</h3>
+                    <div style="height: 250px; position: relative;">
+                        <canvas id="expenseChart"></canvas>
+                    </div>
                 </div>
             </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="text-lg font-bold mb-4 text-gray-800">Spending Trend</h3>
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <h3 class="text-base font-bold mb-3 text-gray-800">Spending Trend</h3>
                 <div style="height: 300px; position: relative;">
                     <canvas id="trendChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div id="expenses-page" class="hidden bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h3 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">All Expenses</h3>
+        <div id="expenses-page" class="hidden bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+            <h3 class="text-lg font-bold mb-3 text-gray-800 border-b pb-2">All Expenses</h3>
             <div class="overflow-x-auto">
-                <table class="w-full text-left">
+                <table class="w-full text-left text-xs sm:text-sm">
                     <thead>
                         <tr class="bg-gray-100">
-                            <th class="p-3 border-b">Date</th>
-                            <th class="p-3 border-b">Name</th>
-                            <th class="p-3 border-b">Category</th>
-                            <th class="p-3 border-b">Description</th>
-                            <th class="p-3 border-b text-right">Amount</th>
+                            <th class="p-2 sm:p-3 border-b">Date</th>
+                            <th class="p-2 sm:p-3 border-b">Name</th>
+                            <th class="p-2 sm:p-3 border-b">Category</th>
+                            <th class="p-2 sm:p-3 border-b hidden sm:table-cell">Description</th>
+                            <th class="p-2 sm:p-3 border-b text-right">Amount</th>
                         </tr>
                     </thead>
-                    <tbody id="expense-list" class="text-sm"></tbody>
+                    <tbody id="expense-list"></tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
 
-<div id="budget-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-xl p-6">
+<div id="budget-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-3 z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-xl font-bold mb-4 text-emerald-800">Set Monthly Budget</h3>
         <form id="budget-form" onsubmit="saveBudget(event)">
             <div class="mb-4">
@@ -113,8 +117,8 @@
     </div>
 </div>
 
-<div id="expense-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+<div id="expense-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-3 z-50">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-xl font-bold mb-4 text-emerald-800">Add Expense</h3>
         <form id="expense-form" onsubmit="saveExpense(event)">
             <div class="mb-3">
@@ -321,7 +325,7 @@ function updateExpenseList() {
         const exp = expenses[i];
         const row = document.createElement('tr');
         row.className = 'hover:bg-gray-50 border-b';
-        row.innerHTML = '<td class="p-3">' + new Date(exp.expense_date).toLocaleDateString() + '</td><td class="p-3 font-semibold">' + exp.name + '</td><td class="p-3"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs font-semibold">' + exp.category + '</span></td><td class="p-3 text-gray-600">' + (exp.description || '-') + '</td><td class="p-3 text-right font-bold">₹' + exp.amount.toLocaleString('en-IN') + '</td>';
+        row.innerHTML = '<td class="p-2 sm:p-3">' + new Date(exp.expense_date).toLocaleDateString() + '</td><td class="p-2 sm:p-3 font-semibold">' + exp.name + '</td><td class="p-2 sm:p-3"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs font-semibold">' + exp.category + '</span></td><td class="p-2 sm:p-3 text-gray-600 hidden sm:table-cell">' + (exp.description || '-') + '</td><td class="p-2 sm:p-3 text-right font-bold">₹' + exp.amount.toLocaleString('en-IN') + '</td>';
         list.appendChild(row);
     }
 }
