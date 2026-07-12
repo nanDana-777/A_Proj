@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rupee Expense Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>.hidden { display: none !important; }</style>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen text-gray-800">
+
+<div id="auth-page" class="flex items-center justify-center min-h-screen px-4">
+    <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md border border-gray-100">
+        <h2 id="auth-title" class="text-2xl font-bold text-center mb-6 text-emerald-700">Login</h2>
+        <form id="auth-form" onsubmit="handleAuth(event)">
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-1">Email</label>
+                <input type="email" id="auth-email" required class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-1">Password</label>
+                <input type="password" id="auth-password" required class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <button type="submit" id="auth-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg">Login</button>
+        </form>
+        <p class="text-center text-sm mt-4 text-gray-600">
+            <span id="auth-switch-text">Don't have an account?</span>
+            <button id="auth-switch-btn" onclick="toggleAuthMode()" class="text-emerald-600 font-bold underline ml-1">Register</button>
+        </p>
+    </div>
+</div>
+
+<div id="app-page" class="hidden">
+    <nav class="bg-emerald-700 text-white py-4 px-6 flex justify-between items-center">
+        <h1 class="text-xl font-bold">₹ RupeeTracker</h1>
+        <div class="space-x-2">
+            <button onclick="showHome()" class="px-3 py-1.5 rounded hover:bg-emerald-800 font-medium">Dashboard</button>
+            <button onclick="showExpenses()" class="px-3 py-1.5 rounded hover:bg-emerald-800 font-medium">Expenses</button>
+            <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded font-medium">Logout</button>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto p-4 md:p-6">
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <p class="text-sm text-gray-500 uppercase tracking-wider font-bold">Total Monthly Budget</p>
+                <h2 id="display-budget" class="text-3xl md:text-4xl font-extrabold text-gray-900">₹0.00</h2>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openBudgetModal()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-4 py-2 rounded-lg">✏️ Setup Budget</button>
+                <button onclick="openExpenseModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg">➕ Add Expense</button>
+            </div>
+        </div>
+
+        <div id="home-page">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold mb-4 text-gray-800">Budget Allocations</h3>
+                    <canvas id="budgetChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold mb-4 text-gray-800">Actual Spending</h3>
+                    <canvas id="expenseChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-lg font-bold mb-4 text-gray-800">Spending Trend</h3>
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <div id="expenses-page" class="hidden bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h3 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">All Expenses</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="p-3 border-b">Date</th>
+                            <th class="p-3 border-b">Name</th>
+                            <th class="p-3 border-b">Category</th>
+                            <th class="p-3 border-b">Description</th>
+                            <th class="p-3 border-b text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expense-list" class="text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="budget-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-xl p-6">
+        <h3 class="text-xl font-bold mb-4 text-emerald-800">Set Monthly Budget</h3>
+        <form id="budget-form" onsubmit="saveBudget(event)">
+            <div class="mb-4">
+                <label class="block text-sm font-bold mb-1">Total Monthly Budget (₹)</label>
+                <input type="number" id="total-budget" required min="0" class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-bold mb-2">Select Categories & Allocations</label>
+                <div id="category-list" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 border bg-gray-50 rounded-lg"></div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t">
+                <button type="button" onclick="closeBudgetModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="expense-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <h3 class="text-xl font-bold mb-4 text-emerald-800">Add Expense</h3>
+        <form id="expense-form" onsubmit="saveExpense(event)">
+            <div class="mb-3">
+                <label class="block text-sm font-bold mb-1">Expense Name</label>
+                <input type="text" id="expense-name" required class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-bold mb-1">Category</label>
+                <select id="expense-category" required class="w-full px-4 py-2 border rounded-lg"></select>
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-bold mb-1">Amount (₹)</label>
+                <input type="number" id="expense-amount" required min="1" class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-bold mb-1">Date</label>
+                <input type="date" id="expense-date" required class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <div class="mb-3">
+                <label class="block text-sm font-bold mb-1">Description (Optional)</label>
+                <textarea id="expense-desc" rows="2" class="w-full px-4 py-2 border rounded-lg"></textarea>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t">
+                <button type="button" onclick="closeExpenseModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const CATEGORIES = ["Food & Beverages", "Electricity Bills", "Water Bills", "Gas Cylinder/Piped", "Insurance Premia", "Internet & Phone Bills", "House Rent", "Property/Home Loan EMI", "Travel & Petrol", "Maid & Cook Salaries", "School Fees", "Medical & Pharmacy", "Other Expenses"];
+
+let app = null;
+let userId = null;
+let budget = null;
+let expenses = [];
+let isLoginMode = true;
+let budgetChartInstance = null;
+let expenseChartInstance = null;
+let trendChartInstance = null;
+
+setTimeout(function() {
+    if (window.supabase) {
+        app = window.supabase.createClient("https://yitrbyifexlqwtlypjja.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpdHJieWlmZXhscXd0bHlwamphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2MjY0MDQsImV4cCI6MjA5OTIwMjQwNH0.c_8ctd-2FQQWur_4e32b-uvEmUSB2hgKW_OJ-1dMtLQ");
+        console.log("✅ Supabase Ready");
+        setupCategories();
+        setupAuthListener();
+    }
+}, 500);
+
+function setupCategories() {
+    const categoryList = document.getElementById('category-list');
+    categoryList.innerHTML = '';
+    for (let i = 0; i < CATEGORIES.length; i++) {
+        const cat = CATEGORIES[i];
+        const div = document.createElement('div');
+        div.className = 'p-2 bg-white rounded border';
+        div.innerHTML = '<label class="flex items-center space-x-2 text-sm cursor-pointer"><input type="checkbox" id="cat-' + i + '" value="' + cat + '" class="rounded"><span>' + cat + '</span></label><input type="number" id="amt-' + i + '" placeholder="₹" min="0" disabled class="hidden w-full text-xs px-2 py-1 border rounded mt-1">';
+        categoryList.appendChild(div);
+        document.getElementById('cat-' + i).addEventListener('change', function() {
+            toggleCategoryAmount(i);
+        });
+    }
+}
+
+function toggleCategoryAmount(idx) {
+    const checkbox = document.getElementById('cat-' + idx);
+    const amount = document.getElementById('amt-' + idx);
+    if (checkbox.checked) {
+        amount.classList.remove('hidden');
+        amount.disabled = false;
+    } else {
+        amount.classList.add('hidden');
+        amount.disabled = true;
+        amount.value = '';
+    }
+}
+
+function setupAuthListener() {
+    app.auth.onAuthStateChange(function(event, session) {
+        if (session && session.user) {
+            userId = session.user.id;
+            document.getElementById('auth-page').classList.add('hidden');
+            document.getElementById('app-page').classList.remove('hidden');
+            loadData();
+        } else {
+            userId = null;
+            document.getElementById('app-page').classList.add('hidden');
+            document.getElementById('auth-page').classList.remove('hidden');
+        }
+    });
+}
+
+function toggleAuthMode() {
+    isLoginMode = !isLoginMode;
+    document.getElementById('auth-title').innerText = isLoginMode ? "Login" : "Register";
+    document.getElementById('auth-btn').innerText = isLoginMode ? "Login" : "Register";
+    document.getElementById('auth-switch-text').innerText = isLoginMode ? "Don't have an account?" : "Already registered?";
+    document.getElementById('auth-switch-btn').innerText = isLoginMode ? "Register" : "Login";
+}
+
+async function handleAuth(event) {
+    event.preventDefault();
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value.trim();
+
+    if (isLoginMode) {
+        const result = await app.auth.signInWithPassword({email: email, password: password});
+        if (result.error) alert("Login Failed: " + result.error.message);
+    } else {
+        const result = await app.auth.signUp({email: email, password: password});
+        if (result.error) alert("Registration Failed: " + result.error.message);
+        else alert("Registration successful!");
+    }
+}
+
+async function logout() {
+    await app.auth.signOut();
+}
+
+function openBudgetModal() {
+    document.getElementById('budget-modal').classList.remove('hidden');
+}
+
+function closeBudgetModal() {
+    document.getElementById('budget-modal').classList.add('hidden');
+}
+
+function openExpenseModal() {
+    document.getElementById('expense-modal').classList.remove('hidden');
+    document.getElementById('expense-date').value = new Date().toISOString().split('T')[0];
+}
+
+function closeExpenseModal() {
+    document.getElementById('expense-modal').classList.add('hidden');
+}
+
+async function saveBudget(event) {
+    event.preventDefault();
+    const total = parseFloat(document.getElementById('total-budget').value);
+    const selectedCats = [];
+    const allocations = {};
+
+    for (let i = 0; i < CATEGORIES.length; i++) {
+        if (document.getElementById('cat-' + i).checked) {
+            const amt = parseFloat(document.getElementById('amt-' + i).value) || 0;
+            selectedCats.push(CATEGORIES[i]);
+            allocations[CATEGORIES[i]] = amt;
+        }
+    }
+
+    if (budget) {
+        await app.from('budgets').update({total_budget: total, selected_categories: selectedCats, category_allocations: allocations}).eq('id', budget.id);
+    } else {
+        await app.from('budgets').insert([{user_id: userId, total_budget: total, selected_categories: selectedCats, category_allocations: allocations}]);
+    }
+
+    closeBudgetModal();
+    loadData();
+}
+
+async function saveExpense(event) {
+    event.preventDefault();
+    const name = document.getElementById('expense-name').value;
+    const category = document.getElementById('expense-category').value;
+    const amount = parseFloat(document.getElementById('expense-amount').value);
+    const date = document.getElementById('expense-date').value;
+    const desc = document.getElementById('expense-desc').value;
+
+    if (!category) {
+        alert("Please setup budget categories first");
+        return;
+    }
+
+    await app.from('expenses').insert([{user_id: userId, name: name, category: category, amount: amount, expense_date: date, description: desc}]);
+    document.getElementById('expense-form').reset();
+    closeExpenseModal();
+    loadData();
+}
+
+async function loadData() {
+    let result = await app.from('budgets').select('*').eq('user_id', userId).maybeSingle();
+    budget = result.data;
+    
+    document.getElementById('display-budget').innerText = '₹' + (budget?.total_budget || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
+
+    let result2 = await app.from('expenses').select('*').eq('user_id', userId).order('expense_date', {ascending: false});
+    expenses = result2.data || [];
+
+    updateExpenseList();
+    updateCategoryDropdown();
+    renderCharts();
+}
+
+function updateExpenseList() {
+    const list = document.getElementById('expense-list');
+    list.innerHTML = '';
+    if (expenses.length === 0) {
+        list.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">No expenses yet</td></tr>';
+        return;
+    }
+    for (let i = 0; i < expenses.length; i++) {
+        const exp = expenses[i];
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50 border-b';
+        row.innerHTML = '<td class="p-3">' + new Date(exp.expense_date).toLocaleDateString() + '</td><td class="p-3 font-semibold">' + exp.name + '</td><td class="p-3"><span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs font-semibold">' + exp.category + '</span></td><td class="p-3 text-gray-600">' + (exp.description || '-') + '</td><td class="p-3 text-right font-bold">₹' + exp.amount.toLocaleString('en-IN') + '</td>';
+        list.appendChild(row);
+    }
+}
+
+function updateCategoryDropdown() {
+    const dropdown = document.getElementById('expense-category');
+    dropdown.innerHTML = '';
+    if (budget && budget.selected_categories && budget.selected_categories.length > 0) {
+        for (let i = 0; i < budget.selected_categories.length; i++) {
+            const cat = budget.selected_categories[i];
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            dropdown.appendChild(opt);
+        }
+    } else {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '-- Setup Budget First --';
+        dropdown.appendChild(opt);
+    }
+}
+
+function renderCharts() {
+    renderBudgetChart();
+    renderExpenseChart();
+    renderTrendChart();
+}
+
+function renderBudgetChart() {
+    const ctx = document.getElementById('budgetChart');
+    if (!ctx) return;
+    if (budgetChartInstance) budgetChartInstance.destroy();
+
+    const labels = budget?.selected_categories || [];
+    const data = [];
+    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#a855f7', '#06b6d4', '#eab308', '#6b7280'];
+
+    for (let i = 0; i < labels.length; i++) {
+        data.push(budget.category_allocations[labels[i]] || 0);
+    }
+
+    budgetChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels.length ? labels : ['No Budget'],
+            datasets: [{data: data.length ? data : [1], backgroundColor: colors}]
+        },
+        options: {responsive: true, plugins: {legend: {position: 'bottom', labels: {boxWidth: 12, font: {size: 11}}}}}
+    });
+}
+
+function renderExpenseChart() {
+    const ctx = document.getElementById('expenseChart');
+    if (!ctx) return;
+    if (expenseChartInstance) expenseChartInstance.destroy();
+
+    const expenseMap = {};
+    for (let i = 0; i < CATEGORIES.length; i++) expenseMap[CATEGORIES[i]] = 0;
+    for (let i = 0; i < expenses.length; i++) {
+        if (expenseMap[expenses[i].category] !== undefined) {
+            expenseMap[expenses[i].category] += Number(expenses[i].amount);
+        }
+    }
+
+    const labels = [];
+    const data = [];
+    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#a855f7', '#06b6d4', '#eab308', '#6b7280'];
+
+    for (const key in expenseMap) {
+        if (expenseMap[key] > 0) {
+            labels.push(key);
+            data.push(expenseMap[key]);
+        }
+    }
+
+    expenseChartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: labels.length ? labels : ['No Expenses'],
+            datasets: [{data: data.length ? data : [1], backgroundColor: colors}]
+        },
+        options: {responsive: true, plugins: {legend: {position: 'bottom', labels: {boxWidth: 12, font: {size: 11}}}}}
+    });
+}
+
+function renderTrendChart() {
+    const ctx = document.getElementById('trendChart');
+    if (!ctx) return;
+    if (trendChartInstance) trendChartInstance.destroy();
+
+    const days = 30;
+    const dayLabels = [];
+    const expectedData = [];
+    const actualData = [];
+    const totalBudget = budget?.total_budget || 0;
+    const dailyExpected = totalBudget / days;
+    const spentByDay = [];
+
+    for (let i = 0; i <= days; i++) spentByDay[i] = 0;
+    for (let i = 0; i < expenses.length; i++) {
+        const dayIdx = Math.min(days, new Date(expenses[i].expense_date).getDate() || 1);
+        spentByDay[dayIdx] += Number(expenses[i].amount);
+    }
+
+    let cumulative = 0;
+    for (let d = 1; d <= days; d++) {
+        dayLabels.push('Day ' + d);
+        expectedData.push((dailyExpected * d).toFixed(0));
+        cumulative += spentByDay[d];
+        actualData.push(cumulative);
+    }
+
+    trendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dayLabels,
+            datasets: [
+                {label: 'Expected (₹)', data: expectedData, borderColor: '#9ca3af', borderDash: [5, 5], fill: false, tension: 0.1},
+                {label: 'Actual (₹)', data: actualData, borderColor: '#047857', backgroundColor: 'rgba(4, 120, 87, 0.1)', fill: true, tension: 0.1}
+            ]
+        },
+        options: {responsive: true, maintainAspectRatio: false, scales: {y: {beginAtZero: true}}}
+    });
+}
+
+function showHome() {
+    document.getElementById('home-page').classList.remove('hidden');
+    document.getElementById('expenses-page').classList.add('hidden');
+}
+
+function showExpenses() {
+    document.getElementById('home-page').classList.add('hidden');
+    document.getElementById('expenses-page').classList.remove('hidden');
+}
+</script>
+
+</body>
+</html>
